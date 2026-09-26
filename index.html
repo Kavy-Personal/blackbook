@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Black Book — Reader</title>
+  <!-- GitHub Pages & PWA Metadata -->
+  <meta name="description" content="Black Book of English Vocabulary — Premium Minimal Digital Book Reader for GitHub Pages.">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta property="og:title" content="Black Book of English Vocabulary — Reader">
+  <meta property="og:description" content="Clean, high-performance dark-mode reader for the Black Book of English Vocabulary.">
+  <meta property="og:type" content="website">
+  <!-- Embedded Vector SVG Favicon: Zero 404 errors when deployed on GitHub Pages -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f2f2f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19.5A2.5 2.5 0 0 1 6.5 17H20'/%3E%3Cpath d='M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'/%3E%3C/svg%3E">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg-black: #000000;
+      --bg-surface: #0a0a0a;
+      --bg-elevated: #121212;
+      --bg-hover: #1c1c1c;
+      --bg-active: #262626;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(255, 255, 255, 0.28);
+      --text-primary: #f2f2f2;
+      --text-muted: #888888;
+      --text-faint: #555555;
+      --accent-active: #3b82f6;
+      --nav-height: 44px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
+      --font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    }
+
+    /* The UI always remains strictly dark/black — never inverted */
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: var(--bg-black);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.4;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--bg-black);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Top Bar: Always dark Obsidian, zero overlap on mobile screens */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: var(--nav-height);
+      padding: 0 10px;
+      padding-top: env(safe-area-inset-top, 0px);
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      z-index: 50;
+      flex-shrink: 0;
+      gap: 6px;
+    }
+
+    .nav-group-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .book-title-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .book-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.01em;
+    }
+
+    .book-edition {
+      font-size: 10px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: var(--font-mono);
+      display: none;
+    }
+
+    @media (min-width: 580px) {
+      .book-edition {
+        display: block;
+      }
+    }
+
+    .nav-group-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      height: 32px;
+      padding: 0 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+    }
+
+    .btn-icon:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .btn-icon:active {
+      background: var(--bg-active);
+    }
+
+    .btn-icon svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.8;
+      fill: none;
+      stroke: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* Filter Toggle Buttons: Keep background dark, highlight with border and indicator */
+    .btn-filter-toggle {
+      border-color: var(--border-subtle);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-muted);
+    }
+
+    .btn-filter-toggle.active {
+      background: var(--bg-active);
+      color: var(--text-primary);
+      border-color: var(--border-focus);
+    }
+
+    .btn-filter-toggle.active svg {
+      stroke: #ffffff;
+    }
+
+    /* Mobile Text Hide: Icon only on narrow screens to prevent any overlap */
+    .btn-label {
+      display: inline;
+    }
+
+    .desktop-only {
+      display: none;
+    }
+
+    @media (max-width: 540px) {
+      .btn-label {
+        display: none;
+      }
+      .btn-icon {
+        padding: 0 7px;
+        min-width: 32px;
+      }
+    }
+
+    @media (min-width: 720px) {
+      .desktop-only {
+        display: inline-flex;
+      }
+      .top-bar {
+        padding: 0 16px;
+      }
+    }
+
+    .reader-stage {
+      flex: 1 1 auto;
+      width: 100%;
+      height: calc(100dvh - var(--nav-height));
+      position: relative;
+      background: #000000;
+      overflow: hidden;
+    }
+
+    /*
+      ISOLATED DOCUMENT FILTER PIPELINE:
+      The parent UI and headers stay purely black.
+      Only the #archive-iframe receives CSS filters to invert white pages and UI into OLED dark.
+    */
+    #archive-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background-color: #000000;
+      transition: filter 160ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    /* Loading Spinner */
+    .reader-loader {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-black);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      z-index: 5;
+      pointer-events: none;
+      transition: opacity 250ms ease;
+    }
+
+    .reader-loader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-subtle);
+      border-top-color: var(--text-primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(2px);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms ease;
+    }
+
+    .drawer-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      width: 85%;
+      max-width: 340px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      z-index: 110;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 12px 0 32px rgba(0,0,0,0.6);
+    }
+
+    .drawer.drawer-right {
+      left: auto;
+      right: 0;
+      border-right: none;
+      border-left: 1px solid var(--border-subtle);
+      transform: translateX(100%);
+    }
+
+    .drawer.active {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .drawer-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+
+    .toc-list, .bookmark-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .toc-item, .bookmark-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 120ms ease;
+    }
+
+    .toc-item:hover, .bookmark-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .toc-item span:last-child, .bookmark-page {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .setting-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .setting-name {
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .setting-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: var(--bg-hover);
+      border: 1px solid var(--border-subtle);
+      transition: .2s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background-color: var(--text-muted);
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #ffffff;
+      border-color: #ffffff;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(18px);
+      background-color: var(--bg-black);
+    }
+
+    .notes-textarea {
+      width: 100%;
+      height: 120px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: var(--text-primary);
+      padding: 10px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      resize: none;
+      outline: none;
+    }
+
+    .notes-textarea:focus {
+      border-color: var(--border-focus);
+    }
+
+    .btn-block {
+      width: 100%;
+      padding: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: background 120ms ease;
+    }
+
+    .btn-block:hover {
+      background: var(--bg-hover);
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast {
+      background: rgba(20, 20, 20, 0.95);
+      border: 1px solid var(--border-focus);
+      color: var(--text-primary);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <!-- TOP APP BAR -->
+    <header class="top-bar">
+      <!-- Left: Navigation Drawer Toggle & Book Identity -->
+      <div class="nav-group-left">
+        <button id="btn-sidebar" class="btn-icon" aria-label="Open Navigation" title="Table of Contents">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+
+        <div class="book-title-meta">
+          <span class="book-title">Black Book of English Vocabulary</span>
+          <span class="book-edition">Updated Edition • February 2026</span>
+        </div>
+      </div>
+
+      <!-- Right: Action & Document Filter Controls -->
+      <div class="nav-group-right">
+        <!-- Grayscale Document Filter: Strips saturation from PDF for e-ink reading -->
+        <button id="btn-grayscale" class="btn-icon btn-filter-toggle" title="Toggle Grayscale Mode (G)">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="2" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+          <span class="btn-label">Grayscale</span>
+        </button>
+
+        <!-- Quick Bookmark (Tablet/Desktop) -->
+        <button id="btn-quick-bm" class="btn-icon desktop-only" title="Bookmark Page">
+          <svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+
+        <!-- Fullscreen Toggle: Accessible on all screens (Desktop, Tablet, and Mobile) -->
+        <button id="btn-fullscreen" class="btn-icon" aria-label="Toggle Fullscreen" title="Toggle Fullscreen (F)">
+          <svg id="fs-icon-enter" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+          <svg id="fs-icon-exit" style="display:none;" viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></svg>
+        </button>
+
+        <!-- Settings / Preferences Drawer -->
+        <button id="btn-settings" class="btn-icon" aria-label="Open Settings" title="Reader Settings & Notes">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN READING VIEWPORT -->
+    <main class="reader-stage">
+      <div id="loader" class="reader-loader">
+        <div class="spinner"></div>
+        <span style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">INITIALIZING FOLIO...</span>
+      </div>
+
+      <!-- Archive.org Document Viewer Embed -->
+      <iframe
+        id="archive-iframe"
+        src="https://archive.org/embed/blackbook_202609"
+        frameborder="0"
+        webkitallowfullscreen="true"
+        mozallowfullscreen="true"
+        allowfullscreen>
+      </iframe>
+    </main>
+
+    <!-- BACKDROP FOR DRAWERS -->
+    <div id="backdrop" class="drawer-backdrop"></div>
+
+    <!-- LEFT DRAWER: NAVIGATION & TABLE OF CONTENTS -->
+    <aside id="drawer-left" class="drawer">
+      <div class="drawer-header">
+        <span class="drawer-title">Navigation</span>
+        <button id="btn-close-left" class="btn-icon">✕</button>
+      </div>
+      <div class="drawer-body">
+        <div>
+          <div class="section-label">Sections & Index</div>
+          <ul class="toc-list">
+            <li class="toc-item" data-page="1"><span>Cover & Publication Meta</span><span>p. 1</span></li>
+            <li class="toc-item" data-page="5"><span>Table of Contents</span><span>p. 5</span></li>
+            <li class="toc-item" data-page="15"><span>One Word Substitutions</span><span>p. 15</span></li>
+            <li class="toc-item" data-page="145"><span>Idioms & Phrases</span><span>p. 145</span></li>
+            <li class="toc-item" data-page="260"><span>Synonyms & Antonyms</span><span>p. 260</span></li>
+            <li class="toc-item" data-page="420"><span>Common Spelling Errors</span><span>p. 420</span></li>
+            <li class="toc-item" data-page="510"><span>Phrasal Verbs & Usage</span><span>p. 510</span></li>
+            <li class="toc-item" data-page="615"><span>Practice Sets (Exams)</span><span>p. 615</span></li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="section-label">Saved Bookmarks</div>
+          <ul id="bookmark-list-container" class="bookmark-list">
+            <!-- Bookmarks populated via JS -->
+          </ul>
+          <button id="btn-add-bookmark" class="btn-block" style="margin-top: 10px;">+ Add Bookmark</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT DRAWER: SETTINGS & DOCUMENT FILTERS -->
+    <aside id="drawer-right" class="drawer drawer-right">
+      <div class="drawer-header">
+        <span class="drawer-title">Preferences</span>
+        <button id="btn-close-right" class="btn-icon">✕</button>
+      </div>
+      <div class="drawer-body">
+        <div>
+          <div class="section-label">Document Filter Pipeline</div>
+
+          <!-- Grayscale Switch: Desaturates PDF document only -->
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">Grayscale Mode</span>
+              <span class="setting-desc">Removes all tint & saturation for focus</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-grayscale-drawer">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Reading Notes</div>
+          <textarea id="reading-notes" class="notes-textarea" placeholder="Type vocabulary or study notes here..."></textarea>
+          <button id="btn-copy-notes" class="btn-block" style="margin-top: 8px;">Copy Notes to Clipboard</button>
+        </div>
+
+        <div>
+          <div class="section-label">Document Metadata</div>
+          <div style="font-size: 11px; color: var(--text-muted); line-height: 1.5;">
+            Document: <strong>Blackbook of English Vocabulary</strong><br>
+            Edition: Updated February 2026<br>
+            Filtering: Isolated Hardware GPU Target (`#archive-iframe`)
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- TOAST NOTIFICATIONS -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script>
+    /* ==================================================
+       STATE & LOCAL PERSISTENCE
+       ================================================== */
+    const State = {
+      grayscale: false,
+      bookmarks: [],
+      notes: ''
+    };
+
+    function loadSavedState() {
+      try {
+        State.grayscale = localStorage.getItem('bb_reader_grayscale') === 'true';
+        State.bookmarks = JSON.parse(localStorage.getItem('bb_reader_bookmarks') || '[]');
+        State.notes = localStorage.getItem('bb_reader_notes') || '';
+      } catch (e) {
+        console.warn('LocalStorage unavailable, defaulting to memory state.');
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem('bb_reader_grayscale', State.grayscale);
+        localStorage.setItem('bb_reader_bookmarks', JSON.stringify(State.bookmarks));
+        localStorage.setItem('bb_reader_notes', State.notes);
+      } catch (e) {}
+    }
+
+    /*
+      APPLY FILTERS DIRECTLY TO THE PDF IFRAME ONLY.
+      The reader UI remains pitch black (#000000) and unaffected.
+    */
+    function updateDocumentFilters() {
+      const iframe = document.getElementById('archive-iframe');
+      if (!iframe) return;
+
+      const filterParts = [];
+
+      if (State.grayscale) {
+        // Desaturate PDF document for calm e-ink reading
+        filterParts.push('grayscale(1) contrast(1.05)');
+      }
+
+      iframe.style.filter = filterParts.length > 0 ? filterParts.join(' ') : 'none';
+
+      // Update button & drawer states
+      const btnGray = document.getElementById('btn-grayscale');
+      const drawerGray = document.getElementById('toggle-grayscale-drawer');
+      if (btnGray) btnGray.classList.toggle('active', State.grayscale);
+      if (drawerGray) drawerGray.checked = State.grayscale;
+
+      saveState();
+    }
+
+    function toggleGrayscale() {
+      State.grayscale = !State.grayscale;
+      updateDocumentFilters();
+      showToast(State.grayscale ? 'PDF Grayscale: Active' : 'PDF Grayscale: Default');
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => toast.classList.add('show'));
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 200);
+      }, 2000);
+    }
+
+    const backdrop = document.getElementById('backdrop');
+    const drawerLeft = document.getElementById('drawer-left');
+    const drawerRight = document.getElementById('drawer-right');
+
+    function closeDrawers() {
+      drawerLeft.classList.remove('active');
+      drawerRight.classList.remove('active');
+      backdrop.classList.remove('active');
+    }
+
+    function openLeftDrawer() {
+      closeDrawers();
+      drawerLeft.classList.add('active');
+      backdrop.classList.add('active');
+      renderBookmarks();
+    }
+
+    function openRightDrawer() {
+      closeDrawers();
+      drawerRight.classList.add('active');
+      backdrop.classList.add('active');
+    }
+
+    function renderBookmarks() {
+      const list = document.getElementById('bookmark-list-container');
+      list.innerHTML = '';
+
+      if (State.bookmarks.length === 0) {
+        list.innerHTML = '<li style="color:var(--text-faint); font-size:12px; padding:6px 0;">No saved bookmarks yet.</li>';
+        return;
+      }
+
+      State.bookmarks.forEach((bm, index) => {
+        const li = document.createElement('li');
+        li.className = 'bookmark-item';
+        li.innerHTML = `
+          <span>${bm.title}</span>
+          <span style="display:flex; align-items:center; gap:8px;">
+            <span class="bookmark-page">#${index + 1}</span>
+            <button data-idx="${index}" style="background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:11px;">✕</button>
+          </span>
+        `;
+
+        li.querySelector('button').addEventListener('click', (e) => {
+          e.stopPropagation();
+          State.bookmarks.splice(index, 1);
+          saveState();
+          renderBookmarks();
+          showToast('Bookmark removed');
+        });
+
+        list.appendChild(li);
+      });
+    }
+
+    function addBookmark() {
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const label = `Folio Mark (${timeStr})`;
+      State.bookmarks.push({ title: label, date: Date.now() });
+      saveState();
+      renderBookmarks();
+      showToast('Bookmark added');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSavedState();
+      updateDocumentFilters();
+
+      // Top bar filter buttons
+      document.getElementById('btn-grayscale').addEventListener('click', toggleGrayscale);
+
+      // Drawer filter toggles
+      document.getElementById('toggle-grayscale-drawer').addEventListener('change', (e) => {
+        State.grayscale = e.target.checked;
+        updateDocumentFilters();
+        showToast(State.grayscale ? 'PDF Grayscale: Active' : 'PDF Grayscale: Default');
+      });
+
+      // Navigation & Settings drawers
+      document.getElementById('btn-sidebar').addEventListener('click', openLeftDrawer);
+      document.getElementById('btn-close-left').addEventListener('click', closeDrawers);
+      document.getElementById('btn-settings').addEventListener('click', openRightDrawer);
+      document.getElementById('btn-close-right').addEventListener('click', closeDrawers);
+      backdrop.addEventListener('click', closeDrawers);
+
+      // Bookmarks
+      const quickBm = document.getElementById('btn-quick-bm');
+      if (quickBm) quickBm.addEventListener('click', addBookmark);
+      document.getElementById('btn-add-bookmark').addEventListener('click', addBookmark);
+
+      // Cross-browser Fullscreen controller with mobile Safari detection
+      const fsBtn = document.getElementById('btn-fullscreen');
+      const fsIconEnter = document.getElementById('fs-icon-enter');
+      const fsIconExit = document.getElementById('fs-icon-exit');
+
+      function isFullscreenActive() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      }
+
+      function updateFullscreenUI() {
+        const active = isFullscreenActive();
+        if (fsIconEnter) fsIconEnter.style.display = active ? 'none' : 'block';
+        if (fsIconExit) fsIconExit.style.display = active ? 'block' : 'none';
+        if (fsBtn) {
+          fsBtn.title = active ? 'Exit Fullscreen (F)' : 'Toggle Fullscreen (F)';
+          fsBtn.setAttribute('aria-label', active ? 'Exit Fullscreen' : 'Enter Fullscreen');
+        }
+      }
+
+      function toggleFullscreen() {
+        const docEl = document.documentElement;
+        if (!isFullscreenActive()) {
+          const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+          if (req) {
+            req.call(docEl).catch(() => {
+              showToast('Fullscreen mode not permitted by browser');
+            });
+          } else {
+            // iOS Safari iPhone fallback guidance
+            showToast('Tip: Share → "Add to Home Screen" for borderless fullscreen on iOS');
+          }
+        } else {
+          const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+          if (exit) {
+            exit.call(document).catch(() => {});
+          }
+        }
+      }
+
+      if (fsBtn) {
+        fsBtn.addEventListener('click', toggleFullscreen);
+      }
+
+      document.addEventListener('fullscreenchange', updateFullscreenUI);
+      document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+      document.addEventListener('mozfullscreenchange', updateFullscreenUI);
+
+      // Notes sync
+      const notesArea = document.getElementById('reading-notes');
+      notesArea.value = State.notes;
+      notesArea.addEventListener('input', (e) => {
+        State.notes = e.target.value;
+        saveState();
+      });
+
+      document.getElementById('btn-copy-notes').addEventListener('click', () => {
+        if (!State.notes.trim()) {
+          showToast('No notes to copy');
+          return;
+        }
+        document.execCommand('copy');
+        showToast('Notes copied to clipboard');
+      });
+
+      // Dismiss loader when iframe finishes loading
+      const iframe = document.getElementById('archive-iframe');
+      const loader = document.getElementById('loader');
+      iframe.addEventListener('load', () => {
+        loader.classList.add('hidden');
+      });
+
+      // Keyboard shortcuts (ignored if typing in text input/notes)
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        if (e.key.toLowerCase() === 'g') {
+          toggleGrayscale();
+        } else if (e.key === 'Escape') {
+          closeDrawers();
+        } else if (e.key.toLowerCase() === 'f') {
+          toggleFullscreen();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
